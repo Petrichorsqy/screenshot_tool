@@ -6,6 +6,16 @@
 
 ---
 
+## 下载
+
+[**下载最新版 exe**](../../releases/latest)
+
+约 142 KB，免安装，解压即用。**不需要** Visual Studio、不需要 .NET、不需要 VC++ 运行库——所有依赖都是 Windows 自带的系统 DLL。
+
+要求：Windows 10 / 11，64 位。
+
+---
+
 ## 实测数据
 
 在 Windows 11（2560×1600 @150%）上实测：
@@ -63,8 +73,12 @@ dwmapi.dll  COMDLG32.dll  KERNEL32.dll
 
 ### 环境要求
 
-- Visual Studio 2022（含 C++ 桌面开发工作负载）
-- Windows SDK 10
+只需要 MSVC 工具链和 Windows SDK，**不需要完整的 Visual Studio**：
+
+- **Build Tools for Visual Studio 2022**（免费，勾选「使用 C++ 的桌面开发」工作负载，约 2 GB）
+- 或者完整版 Visual Studio 2022 的任一版本（Community / Professional / Enterprise）——都行
+
+构建脚本用 `vswhere` 自动定位工具链，所以安装版本和安装盘符任意。
 
 ### 编译
 
@@ -75,6 +89,8 @@ build.bat
 产物在 `build\screenshot_tool.exe`，直接双击运行即可，无需安装。
 
 构建脚本会自动调用 `vcvars64.bat` 并编译 `src\*.cpp`，新增源文件不需要改脚本。
+
+> 如果你只想用不想构建，直接去上面的[下载](#下载)拿现成的 exe 就行，不需要任何工具链。
 
 ### 开机自启（可选）
 
