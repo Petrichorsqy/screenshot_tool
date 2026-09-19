@@ -11,6 +11,7 @@
 #include <wincodec.h>
 #include <strsafe.h>
 #include <shellapi.h>   // ShellExecuteW, for OpenShotsFolder
+#include <shlobj.h>     // SHGetKnownFolderPath, FOLDERID_Pictures
 
 #include "capture.h"
 
@@ -149,29 +150,81 @@ HRESULT SavePngWithCom(const Bitmap32& bm, const wchar_t* path)
 }
 
 // -----------------------------------------------------------------------------
-bool BuildShotsDir(wchar_t* out, size_t cch)
+// The directory the exe lives in, with a trailing backslash.
+static bool ExeDir(wchar_t* out, size_t cch)
 {
-    wchar_t exePath[MAX_PATH];
-    const DWORD n = GetModuleFileNameW(nullptr, exePath, ARRAYSIZE(exePath));
-    if (n == 0 || n >= ARRAYSIZE(exePath)) return false;
+    wchar_t path[MAX_PATH];
+    const DWORD n = GetModuleFileNameW(nullptr, path, ARRAYSIZE(path));
+    if (n == 0 || n >= ARRAYSIZE(path)) return false;
 
     // Strip the file name, keeping the trailing backslash. Done by hand rather
     // than with wcsrchr to keep the CRT's wide-string machinery out of the link.
     size_t len = 0;
-    while (len < ARRAYSIZE(exePath) && exePath[len] != L'\0') ++len;
+    while (len < ARRAYSIZE(path) && path[len] != L'\0') ++len;
     size_t cut = len;
-    while (cut > 0 && exePath[cut - 1] != L'\\') --cut;
+    while (cut > 0 && path[cut - 1] != L'\\') --cut;
     if (cut == 0) return false;
-    exePath[cut] = L'\0';
+    path[cut] = L'\0';
 
-    if (FAILED(StringCchPrintfW(out, cch, L"%sshots\\", exePath)))
+    return SUCCEEDED(StringCchCopyW(out, cch, path));
+}
+
+// Creates `dir` if absent. False if it cannot be created or is not a directory.
+static bool EnsureDir(const wchar_t* dir)
+{
+    if (CreateDirectoryW(dir, nullptr)) return true;
+    if (GetLastError() != ERROR_ALREADY_EXISTS) return false;
+    const DWORD attr = GetFileAttributesW(dir);
+    return attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_DIRECTORY) != 0;
+}
+
+// Existence is not writability, and the read-only attribute is not the answer
+// either — Program Files is not marked read-only, yet a non-elevated process
+// cannot write there. The only reliable test is to actually create a file.
+static bool DirIsWritable(const wchar_t* dir)
+{
+    wchar_t probe[MAX_PATH];
+    // Per-process name so two instances cannot trip over each other's probe.
+    if (FAILED(StringCchPrintfW(probe, ARRAYSIZE(probe), L"%s.shot_probe_%lu",
+                                dir, GetCurrentProcessId())))
         return false;
 
-    if (!CreateDirectoryW(out, nullptr)) {
-        const DWORD err = GetLastError();
-        if (err != ERROR_ALREADY_EXISTS) return false;
-    }
+    // FILE_FLAG_DELETE_ON_CLOSE means no explicit cleanup is needed.
+    HANDLE h = CreateFileW(probe, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+                           FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE,
+                           nullptr);
+    if (h == INVALID_HANDLE_VALUE) return false;
+    CloseHandle(h);
     return true;
+}
+
+bool BuildShotsDir(wchar_t* out, size_t cch)
+{
+    // First choice: <exe dir>\shots\, so a portable copy keeps its screenshots
+    // beside itself and can be moved or deleted as one unit.
+    wchar_t base[MAX_PATH];
+    if (ExeDir(base, ARRAYSIZE(base))) {
+        wchar_t dir[MAX_PATH];
+        if (SUCCEEDED(StringCchPrintfW(dir, ARRAYSIZE(dir), L"%sshots\\", base))
+            && EnsureDir(dir) && DirIsWritable(dir))
+            return SUCCEEDED(StringCchCopyW(out, cch, dir));
+    }
+
+    // Fallback: the user's Pictures\Screenshots — where Win+PrtScn already puts
+    // things. Needed when the exe sits somewhere non-writable such as Program
+    // Files, where the first choice would otherwise fail on every capture.
+    // SHGetKnownFolderPath rather than a literal path so it survives OneDrive
+    // redirection and the localised display name of the Pictures folder.
+    PWSTR pics = nullptr;
+    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Pictures, 0, nullptr, &pics))) {
+        wchar_t dir[MAX_PATH];
+        const HRESULT hr = StringCchPrintfW(dir, ARRAYSIZE(dir), L"%s\\Screenshots\\", pics);
+        CoTaskMemFree(pics);
+        if (SUCCEEDED(hr) && EnsureDir(dir))
+            return SUCCEEDED(StringCchCopyW(out, cch, dir));
+    }
+
+    return false;
 }
 
 bool OpenShotsFolder(void)
