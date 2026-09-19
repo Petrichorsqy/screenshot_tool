@@ -14,6 +14,8 @@
 
 要求：Windows 10 / 11，64 位。
 
+每个版本改了什么，见 [CHANGELOG.md](CHANGELOG.md)。
+
 ---
 
 ## 实测数据
