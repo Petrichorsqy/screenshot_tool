@@ -31,7 +31,11 @@ if not exist "%VSPATH%\VC\Auxiliary\Build\vcvars64.bat" (
     exit /b 1
 )
 
-call "%VSPATH%\VC\Auxiliary\Build\vcvars64.bat" >nul
+rem 2>&1 as well as >nul: Microsoft's own vcvars64.bat writes a harmless
+rem "'vswhere.exe' is not recognized" line to stderr when it looks for vswhere
+rem on PATH. Suppressing stdout alone lets that leak into the build log and
+rem makes a successful build look broken.
+call "%VSPATH%\VC\Auxiliary\Build\vcvars64.bat" >nul 2>&1
 if errorlevel 1 (
     echo [build] Failed to initialise the MSVC environment from "%VSPATH%".
     exit /b 1
