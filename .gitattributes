@@ -1,0 +1,9 @@
+# cmd.exe can mis-parse batch files that have LF-only line endings.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Sources are UTF-8 and the build passes /utf-8, which the Chinese string
+# literals in settings.h, main.cpp and pin.cpp depend on. Keep them as text so
+# nothing rewrites their bytes.
+*.cpp text
+*.h   text

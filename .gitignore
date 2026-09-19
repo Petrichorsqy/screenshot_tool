@@ -1,0 +1,24 @@
+# Build output. Also covers shots/, which lives under build/ — but that is
+# listed separately below because it holds captures of whatever was on screen
+# and must never be committed even if the output directory is moved.
+build/
+
+# Captured screenshots. Private by nature.
+shots/
+
+# MSVC intermediates
+*.obj
+*.exe
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.res
+
+# Editor / OS
+.vs/
+.vscode/
+*.user
+*.suo
+Thumbs.db
+desktop.ini
