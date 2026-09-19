@@ -2,13 +2,40 @@
 rem build.bat — no build system, just vcvars + cl. Sources are globbed so this
 rem file never needs editing as the project grows.
 setlocal
-call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat" >nul
-if errorlevel 1 (
-    echo [build] failed to initialise the MSVC environment
+
+rem Locate Visual Studio via vswhere rather than hardcoding a path: the edition
+rem (Community / Professional / Enterprise / BuildTools) and the install drive
+rem both vary between machines.
+set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+if not exist "%VSWHERE%" (
+    echo [build] vswhere.exe not found.
+    echo [build] Install Visual Studio 2022 with the "Desktop development with C++" workload.
     exit /b 1
 )
+
+set "VSPATH="
+for /f "usebackq tokens=*" %%i in (`"%VSWHERE%" -latest -products * ^
+    -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 ^
+    -property installationPath`) do set "VSPATH=%%i"
+
+if not defined VSPATH (
+    echo [build] No Visual Studio installation with the C++ toolset was found.
+    echo [build] Install the "Desktop development with C++" workload.
+    exit /b 1
+)
+
+call "%VSPATH%\VC\Auxiliary\Build\vcvars64.bat" >nul
+if errorlevel 1 (
+    echo [build] Failed to initialise the MSVC environment from "%VSPATH%".
+    exit /b 1
+)
+
 if not exist build mkdir build
 
+rem /utf-8 is load-bearing: the sources are UTF-8 and the system codepage on a
+rem Chinese Windows is GBK. Without it every Chinese string literal in the
+rem binary is garbage. /MT gives a static CRT so the exe has no runtime
+rem dependency.
 cl /nologo /W4 /O1 /MT /GS- /GR- /utf-8 /DUNICODE /D_UNICODE /DNDEBUG ^
    /DWIN32_LEAN_AND_MEAN /DWINVER=0x0A00 /D_WIN32_WINNT=0x0A00 ^
    /Fo:build\ /Fe:build\screenshot_tool.exe ^
