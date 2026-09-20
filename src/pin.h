@@ -3,12 +3,13 @@
 #include <windows.h>
 #include "capture.h"
 
-// Creates a pin whose top-left lands at (xVirtualPx, yVirtualPx).
+// Creates a pin centred on the desktop, scaled down if the capture is too big
+// to sit comfortably on screen.
+//
 // TAKES OWNERSHIP of *bm: on return *bm is ALWAYS zeroed, whether this
 // succeeded or failed, so the caller may unconditionally FreeBitmap32(bm).
 // Never copies pixels — the Bitmap32 becomes the pin's single DIB.
-bool PinCreate(HINSTANCE hInst, HWND hOwner, Bitmap32* bm,
-               int xVirtualPx, int yVirtualPx);
+bool PinCreate(HINSTANCE hInst, HWND hOwner, Bitmap32* bm);
 
 // Destroys every live pin. Safe to call when there are none, and safe to call
 // repeatedly. Refuses while a pin-owned modal dialog is up.

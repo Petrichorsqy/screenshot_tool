@@ -463,8 +463,7 @@ static LRESULT CALLBACK PinWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 }
 
 // -----------------------------------------------------------------------------
-bool PinCreate(HINSTANCE hInst, HWND hOwner, Bitmap32* bm,
-               int xVirtualPx, int yVirtualPx)
+bool PinCreate(HINSTANCE hInst, HWND hOwner, Bitmap32* bm)
 {
     // Consume *bm unconditionally on EVERY path, including all failures below.
     // That is what lets DoCapture have a single cleanup path with no branch on
@@ -528,6 +527,8 @@ bool PinCreate(HINSTANCE hInst, HWND hOwner, Bitmap32* bm,
     //
     // p->bm keeps the original dimensions regardless, so the PNG on disk and
     // the clipboard copy are full resolution no matter what this computes.
+    const int vx = GetSystemMetrics(SM_XVIRTUALSCREEN);
+    const int vy = GetSystemMetrics(SM_YVIRTUALSCREEN);
     const int vw = GetSystemMetrics(SM_CXVIRTUALSCREEN);
     const int vh = GetSystemMetrics(SM_CYVIRTUALSCREEN);
     if (vw > 0 && vh > 0) {
@@ -546,13 +547,19 @@ bool PinCreate(HINSTANCE hInst, HWND hOwner, Bitmap32* bm,
     // so client and window coordinates coincide and every hit test is direct.
     // WS_EX_TOOLWINDOW keeps pins out of Alt+Tab. No WS_EX_LAYERED (per-pixel
     // alpha would double the memory for a feature we do not want).
-    // Offset by the margin so the IMAGE lands exactly where the user dragged,
-    // with the outline surrounding it rather than pushing it off position.
-    const int bd = SHOT_PIN_BORDER;
+    const int bd   = SHOT_PIN_BORDER;
+    const int winW = p->curW + 2 * bd;
+    const int winH = p->curH + 2 * bd;
+
+    // Centred on the desktop rather than placed at the captured position. At
+    // the captured position the pin sits exactly on top of whatever it depicts
+    // — hiding the very thing the user wants to compare it against.
+    const int x = (vw > 0) ? vx + (vw - winW) / 2 : vx;
+    const int y = (vh > 0) ? vy + (vh - winH) / 2 : vy;
+
     p->hwnd = CreateWindowExW(WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
                               L"ShotPinWnd", L"", WS_POPUP,
-                              xVirtualPx - bd, yVirtualPx - bd,
-                              p->curW + 2 * bd, p->curH + 2 * bd,
+                              x, y, winW, winH,
                               hOwner, nullptr, hInst, nullptr);
     if (!p->hwnd) {
         FreeBitmap32(&p->bm);
@@ -566,9 +573,9 @@ bool PinCreate(HINSTANCE hInst, HWND hOwner, Bitmap32* bm,
     g_pins  = p;
     g_pinCount++;
 
-    // Flash the outline so the user can see where the capture landed. Without
-    // it a pin is genuinely invisible: it shows the pixels that were already
-    // there, in the same place.
+    // Flash the outline so the arrival is noticed. A pin showing pixel-perfect
+    // screen content is easy to miss even when it is small and central — the
+    // outline is the only thing that says "this is a window, not the desktop".
     p->flashing = true;
     SetTimer(p->hwnd, SHOT_PIN_FLASH_TIMER, SHOT_PIN_FLASH_MS, nullptr);
 

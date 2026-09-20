@@ -63,7 +63,7 @@ static void DoCapture(const RECT& rcVirtualPx)
     // Clipboard next: it also reads bm, which PinCreate is about to consume.
     CopyBitmapToClipboard(g_hMsg, bm);
 
-    if (!PinCreate(g_hInst, g_hMsg, &bm, rcVirtualPx.left, rcVirtualPx.top))
+    if (!PinCreate(g_hInst, g_hMsg, &bm))
         ReportError(L"创建贴图失败。", HRESULT_FROM_WIN32(GetLastError()));
 
     // PinCreate consumed bm unconditionally, so this is a no-op on success and
