@@ -59,11 +59,14 @@ dwmapi.dll  COMDLG32.dll  KERNEL32.dll
 
 截图后会立刻把图像钉在屏幕上，位置就是你拖拽的位置。
 
+- **截得太大时自动等比缩小**，不会一出现就铺满桌面（上限默认是屏幕的 50%）。小图保持原尺寸，**绝不放大**。拖动四角可以随时改回去
 - 拖动移动
 - 拖拽四角等比例缩放
 - 双击关闭
 - 右键菜单：复制到剪贴板 / 另存为 PNG / 打开截图文件夹 / 关闭
 - 蓝色边框标识，创建瞬间会有一次亮蓝色闪烁提示
+
+> 自动缩小只影响**显示**。磁盘上的 PNG 和剪贴板里的图像始终是**原始分辨率**——贴图只是一个视图。
 
 **托盘菜单**
 
@@ -129,6 +132,7 @@ build.bat
 #define SHOT_HOTKEY_VK     'Q'                      // 热键主键
 #define SHOT_HOTKEY_MODS   (MOD_CONTROL | MOD_ALT | MOD_NOREPEAT)
 
+#define SHOT_PIN_MAX_SCREEN_PCT 50                  // 贴图初始尺寸上限（屏幕的百分比）
 #define SHOT_PIN_BORDER     2                       // 贴图边框粗细
 #define SHOT_PIN_BORDER_RGB RGB(30, 144, 255)       // 贴图边框颜色
 #define SHOT_PIN_FLASH_RGB  RGB(120, 200, 255)      // 创建闪烁颜色

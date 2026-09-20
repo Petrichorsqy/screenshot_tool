@@ -522,6 +522,26 @@ bool PinCreate(HINSTANCE hInst, HWND hOwner, Bitmap32* bm,
     p->curH = p->bm.h;
     p->dragMode = PIN_DRAG_NONE;
 
+    // Scale the DISPLAYED size down if the capture would otherwise land
+    // covering the desktop. Only ever down: a capture already smaller than the
+    // cap is left at 1:1, because upscaling it would only make it blurry.
+    //
+    // p->bm keeps the original dimensions regardless, so the PNG on disk and
+    // the clipboard copy are full resolution no matter what this computes.
+    const int vw = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+    const int vh = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+    if (vw > 0 && vh > 0) {
+        const int maxW = MulDiv(vw, SHOT_PIN_MAX_SCREEN_PCT, 100);
+        const int maxH = MulDiv(vh, SHOT_PIN_MAX_SCREEN_PCT, 100);
+        if (p->curW > maxW || p->curH > maxH) {
+            // Width satisfying both limits, then derive the height from it —
+            // same discipline as DoResize, and for the same reason: the ratio
+            // must come from the ORIGINAL, not from a previous result.
+            p->curW = MinI(maxW, MulDiv(maxH, p->bm.w, p->bm.h));
+            p->curH = MulDiv(p->curW, p->bm.h, p->bm.w);
+        }
+    }
+
     // WS_POPUP with no border/caption means the client area IS the window rect,
     // so client and window coordinates coincide and every hit test is direct.
     // WS_EX_TOOLWINDOW keeps pins out of Alt+Tab. No WS_EX_LAYERED (per-pixel

@@ -42,6 +42,16 @@
 #define SHOT_PIN_FLASH_TIMER 1                       // the only timer a pin owns
 
 // ---- Pinned images ----------------------------------------------------------
+// Largest share of the screen a freshly pinned image may occupy, per dimension.
+// A capture bigger than this is scaled down proportionally the moment it is
+// pinned, so it does not land covering the desktop. Smaller captures are left
+// at 1:1 — never scaled up, which would only make them blurry.
+//
+// This affects the DISPLAYED size only. The file written to disk and the copy
+// on the clipboard keep the full original resolution; the DIB is never
+// resampled. Drag a corner to resize after the fact.
+#define SHOT_PIN_MAX_SCREEN_PCT 50
+
 #define SHOT_PIN_CORNER    16    // corner resize hit zone, physical px
 #define SHOT_PIN_MIN_PX    32    // min displayed width AND height
 #define SHOT_PIN_MAX       64    // refuse to create beyond this many live pins
