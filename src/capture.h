@@ -33,6 +33,12 @@ HRESULT SavePngWithCom(const Bitmap32& bm, const wchar_t* path);
 // if needed and disambiguating with _2, _3... if the name is taken.
 bool BuildPngPath(wchar_t* out, size_t cch);
 
+// Same naming and collision rule, but in an arbitrary EXISTING directory —
+// nothing is created. A trailing separator (or a doubled one) is accepted.
+// Lives here rather than in pin.cpp so there is exactly one implementation of
+// "never silently overwrite an earlier screenshot".
+bool BuildPngPathInDir(const wchar_t* dir, wchar_t* out, size_t cch);
+
 // <exe dir>\shots\ , created if absent. Includes the trailing separator.
 bool BuildShotsDir(wchar_t* out, size_t cch);
 

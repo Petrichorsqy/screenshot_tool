@@ -14,6 +14,7 @@
 // WIN32_LEAN_AND_MEAN drops these from windows.h.
 #include <commdlg.h>
 #include <windowsx.h>   // GET_X_LPARAM / GET_Y_LPARAM
+#include <strsafe.h>
 
 #include "settings.h"
 #include "capture.h"
@@ -211,6 +212,14 @@ static void ShowPinMenu(HWND hwnd)
     HMENU menu = CreatePopupMenu();
     if (!menu) return;
 
+    // The label names the destination, not the path: a deep install path in the
+    // menu is noise, and the target folder's name is what the user recognises.
+    wchar_t quick[128];
+    if (FAILED(StringCchPrintfW(quick, ARRAYSIZE(quick),
+                                L"快速保存到「%s」(&Q)", SHOT_QUICK_SAVE_LABEL)))
+        StringCchCopyW(quick, ARRAYSIZE(quick), L"快速保存(&Q)");
+
+    AppendMenuW(menu, MF_STRING, IDM_PIN_QUICK_SAVE, quick);
     AppendMenuW(menu, MF_STRING, IDM_PIN_COPY,       L"复制到剪贴板(&C)");
     AppendMenuW(menu, MF_STRING, IDM_PIN_SAVEAS,     L"另存为 PNG(&S)...");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
@@ -271,6 +280,47 @@ static void PinSaveAs(HWND hwnd, Pin* p)
     // the DIB" for free — as long as we pass p->bm and not a synthesised size.
     const HRESULT hr = SavePngWithCom(p->bm, path);
     if (FAILED(hr)) ReportError(L"保存 PNG 失败。", hr);
+}
+
+static void PinQuickSave(HWND hwnd, Pin* p)
+{
+    // COPY, never move. The shots\ archive stays complete, so a destination
+    // that is unreachable (a disconnected drive, a mistyped path) fails without
+    // having destroyed the only copy.
+    const DWORD attr = GetFileAttributesW(SHOT_QUICK_SAVE_DIR);
+    if (attr == INVALID_FILE_ATTRIBUTES || !(attr & FILE_ATTRIBUTE_DIRECTORY)) {
+        // A compile-time path cannot fix itself, so say exactly what to edit.
+        // No HRESULT here: the path is the useful part of this error.
+        wchar_t msg[512];
+        StringCchPrintfW(msg, ARRAYSIZE(msg),
+            L"快速保存文件夹不存在或不是文件夹：\n%s\n\n"
+            L"请修改 src\\settings.h 中的 SHOT_QUICK_SAVE_DIR 后重新编译。",
+            SHOT_QUICK_SAVE_DIR);
+        MessageBoxW(hwnd, msg, L"截图工具", MB_ICONWARNING | MB_OK);
+        return;
+    }
+
+    wchar_t path[MAX_PATH];
+    if (!BuildPngPathInDir(SHOT_QUICK_SAVE_DIR, path, ARRAYSIZE(path))) {
+        ReportError(L"无法生成快速保存的文件名。", E_FAIL);
+        return;
+    }
+
+    // p->bm is the ORIGINAL capture: the displayed size is only a view, so a
+    // pin shrunk to a thumbnail still writes full resolution. The destination
+    // file is a new timestamped name, so repeated saves never overwrite.
+    const HRESULT hr = SavePngWithCom(p->bm, path);
+    if (FAILED(hr)) {
+        ReportError(L"快速保存 PNG 失败。", hr);
+        return;
+    }
+
+    // Reuse the creation flash as a success signal. It is the only feedback
+    // available without a dialog, a tray balloon or stealing focus — and the
+    // user already learned to read it as "something happened to this pin".
+    p->flashing = true;
+    InvalidateRect(hwnd, nullptr, FALSE);
+    SetTimer(hwnd, SHOT_PIN_FLASH_TIMER, SHOT_PIN_FLASH_MS, nullptr);
 }
 
 // -----------------------------------------------------------------------------
@@ -417,6 +467,9 @@ static LRESULT CALLBACK PinWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 
     case WM_COMMAND:
         switch (LOWORD(wp)) {
+        case IDM_PIN_QUICK_SAVE:
+            if (p) PinQuickSave(hwnd, p);
+            return 0;
         case IDM_PIN_COPY:
             if (p) CopyBitmapToClipboard(hwnd, p->bm);
             return 0;

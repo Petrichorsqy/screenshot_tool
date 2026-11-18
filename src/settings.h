@@ -52,6 +52,21 @@
 // resampled. Drag a corner to resize after the fact.
 #define SHOT_PIN_MAX_SCREEN_PCT 50
 
+// ---- Quick save -------------------------------------------------------------
+// One-click save from a pin's context menu, straight into a folder you care
+// about (e.g. a game's screenshot album). This is a COPY: the automatic archive
+// in shots\ is left untouched.
+//
+// Compile-time by design, like everything else here. FULL path, no trailing
+// backslash, no environment variables — edit it and rebuild.
+//
+// This only affects the menu action; the capture written to shots\ on every
+// screenshot never depends on this folder being reachable.
+#define SHOT_QUICK_SAVE_DIR   L"D:\\鸣潮截图"
+// Menu wording. Kept separate from the path because a deep install path
+// ("...\\Saved\\ScreenShots") makes a useless menu label.
+#define SHOT_QUICK_SAVE_LABEL L"鸣潮截图"
+
 #define SHOT_PIN_CORNER    16    // corner resize hit zone, physical px
 #define SHOT_PIN_MIN_PX    32    // min displayed width AND height
 #define SHOT_PIN_MAX       64    // refuse to create beyond this many live pins
@@ -92,3 +107,4 @@
 #define IDM_PIN_SAVEAS     2002
 #define IDM_PIN_CLOSE      2003
 #define IDM_PIN_OPEN_SHOTS 2004
+#define IDM_PIN_QUICK_SAVE 2005

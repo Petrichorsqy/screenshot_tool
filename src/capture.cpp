@@ -250,6 +250,24 @@ bool BuildPngPath(wchar_t* out, size_t cch)
     if (!BuildShotsDir(dir, ARRAYSIZE(dir)))
         return false;
 
+    // BuildShotsDir ends with a separator; BuildPngPathInDir tolerates it.
+    return BuildPngPathInDir(dir, out, cch);
+}
+
+// -----------------------------------------------------------------------------
+bool BuildPngPathInDir(const wchar_t* dir, wchar_t* out, size_t cch)
+{
+    if (!dir || !*dir) return false;
+
+    // Trim ALL trailing separators rather than adding one only when missing.
+    // "D:\x\" and "D:\x" must produce the same path; emitting "D:\x\\name"
+    // would make GetFileAttributesW fail forever and every save would look
+    // free while the file already existed.
+    size_t len = 0;
+    while (dir[len] != L'\0') ++len;
+    while (len > 0 && (dir[len - 1] == L'\\' || dir[len - 1] == L'/')) --len;
+    if (len == 0) return false;   // the path WAS only separators
+
     SYSTEMTIME st;
     GetLocalTime(&st);   // local, not UTC: the user's mental model is wall-clock
 
@@ -266,7 +284,8 @@ bool BuildPngPath(wchar_t* out, size_t cch)
                     st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, i);
         }
         if (FAILED(hr)) return false;
-        if (FAILED(StringCchPrintfW(out, cch, L"%s%s", dir, name)))
+        // %.*s writes only the separator-trimmed prefix of dir.
+        if (FAILED(StringCchPrintfW(out, cch, L"%.*s\\%s", (int)len, dir, name)))
             return false;
         if (GetFileAttributesW(out) == INVALID_FILE_ATTRIBUTES)
             return true;   // name is free
